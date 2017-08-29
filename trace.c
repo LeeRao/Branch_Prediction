@@ -1,16 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #define linesize 512 /* should be very safe line size for one line of assembly */
 
-/* this is a special string to indicate print instruction made by
-my program */
-char* my_signature = "LEE: ";/* results in assembly warning
-currently, could print new line separately to fix*/
+/* Injects Assembly instructions to print out branching information
+ * Branch info format:
+ * Memory Address
+ * Taken/Not Taken
+ * Loop or not Loop
+ */
 
-// TODO: add magic series of characters preceding my labels to ensure no one messes 
-// with them.
+char* my_signature = "LEE: "; // same signature as sim.c
 
 /* hashmap to keep track of previous branches, chain and bucket style
 could do linked list, but prefer O(1) access*/

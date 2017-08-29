@@ -4,7 +4,10 @@
 #include <math.h>
 #include "sim.h" /* angle includes for system headers, double quotes
 					means you look in current directory */
+/* Runs simulation based on traces provided in trace.c
+ */
 
+//this is a special string to indicate print instruction made by my program
 char* my_signature = "LEE: "; // used to find if I printed the line or test program did
 
 /* TODO:
@@ -15,6 +18,9 @@ char* my_signature = "LEE: "; // used to find if I printed the line or test prog
 		- should clean it up
 		- maybe be able to make <test>.result
 	Could add signature to branches in trace.c
+
+    Add magic number instead of using my name
+    Signature also currently throws Assembly warning
 */
 
 char * strdup(char *id){
