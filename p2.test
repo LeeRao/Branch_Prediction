@@ -1,0 +1,649 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <setjmp.h>
+#include <string.h>
+#include <stdint.h>
+#include <ctype.h>
+
+#define MISSING() do { \
+    printf("Missing code at %s:%d\n",__FILE__,__LINE__); \
+    exit(0); \
+} while(0)
+
+//investigate why while token wasnt working
+
+/* What is this? */
+static jmp_buf escape;
+char *programChars; 
+int tokenIndex;
+int myTokensSize;
+
+typedef struct s{
+    char isWhile;
+    char isIf;
+    char isElse;
+    char isSemi;
+    char isLeftBlock;
+    char isRightBlock;
+    char isEq;
+    char isEqEq;
+    char isLeft;
+    char isRight;
+    char isEnd;
+    char isId;
+    char isInt;
+    char isMul;
+    char isPlus;
+
+    //in order to getID, save the index where we first found the string, then save the length of the string
+    int stringIndex;
+    char* stringSource;
+    int stringLength;
+
+    uint64_t getIntValue;
+} token;
+
+token *myTokens;
+
+//****************HASHTABLE IMPLEMENTATION************
+
+typedef struct t{
+    char* name;
+    uint64_t value;
+    struct t* next;
+}node;
+
+node *hashTable;
+
+
+
+uint64_t hash(char *name){
+    uint64_t value = 1;
+    for (int i = 0; i < strlen(name); i++){
+        value = value * (name[i]) * (i+1);
+    }
+    value = value % 100; //100 is the hashTable size
+    //printf("Hash value: %d\n", (int) value);
+    return value;
+
+}
+
+uint64_t get(char *id) {
+    uint64_t index = hash(id);
+    node *current = &hashTable[index];
+    while(current != NULL){
+
+        //what if current-> name == ""?
+        if(current->name == '\0' ){
+            return 0;
+        }
+        if(strcmp(current->name, id) == 0){
+            return current->value;
+        } else{
+            current = current->next;            
+        }
+
+    }
+    return 0;
+
+}
+/*
+static char * strdup(char *id){
+    char* dup = (char *) malloc(sizeof(char) * (strlen(id) + 1));
+    for(int i = 0; i <= strlen(id); i++){
+        dup[i] = id[i];
+    }
+
+    return dup;
+}*/
+
+
+void set(char *id, uint64_t value) {
+    uint64_t index = hash(id); //100 is the length of the hashtable
+    //try to find the node
+    node *current = &hashTable[index];
+   // if(current->name == '\0' || (*(current->name) == '\0')){
+    if(current->name == '\0'){
+        (*current).name = strdup(id);
+        (*current).value = value;
+        //printf("Value was set to %d\n", value);
+        current->next = NULL;
+        //printf("Checking set value again: %d\n",  (int) (current->value));
+        return;
+    }
+
+
+    node *trl = NULL;
+    while(current != NULL){
+        if(strcmp(current->name, id) == 0){
+            current->value = value;
+            return;
+
+        } else{
+            trl = current;
+            current = current->next;            
+        }
+
+    }
+
+    current = (node*) malloc(sizeof(node));
+    (*current).name = strdup(id);
+    (*current).value = value;
+    //printf("Value was set to %d\n", value);
+    trl->next = current;
+    current->next = NULL;
+    //printf("%d",  (int) (current->next)->value);
+
+}
+
+static char *remaining(void) {
+    return myTokens[tokenIndex].stringSource;
+}
+
+static void error(void) {
+    printf("error at '%s'\n", remaining());
+    longjmp(escape, 1);
+}
+
+
+//unsure if this code is what he wants
+void consume(void) {
+
+    if(myTokens[tokenIndex].isEnd != '1'){
+        tokenIndex++;
+    }
+}
+
+int isWhile(void) {
+    return myTokens[tokenIndex].isWhile - '0';
+}
+
+int isIf(void) {
+    return myTokens[tokenIndex].isIf - '0';    
+}
+
+int isElse(void) {
+    return myTokens[tokenIndex].isElse - '0';
+}
+
+int isSemi(void) {
+    return myTokens[tokenIndex].isSemi - '0';
+
+}
+
+int isLeftBlock(void) {
+    return myTokens[tokenIndex].isLeftBlock - '0';
+
+}
+
+int isRightBlock(void) {
+    return myTokens[tokenIndex].isRightBlock - '0';
+
+}
+
+int isEq(void) {
+    return myTokens[tokenIndex].isEq - '0';
+}
+
+int isEqEq(void) {
+    return myTokens[tokenIndex].isEqEq - '0';
+
+}
+
+int isLeft(void) {
+    return myTokens[tokenIndex].isLeft - '0';
+
+}
+
+int isRight(void) {
+    return myTokens[tokenIndex].isRight - '0';
+
+}
+
+int isEnd(void) {
+    return myTokens[tokenIndex].isEnd - '0';
+
+}
+
+int isId(void) {
+    return myTokens[tokenIndex].isId - '0';
+
+}
+
+int isMul(void) {
+    return myTokens[tokenIndex].isMul - '0';
+
+}
+
+int isPlus(void) {
+    return myTokens[tokenIndex].isPlus - '0';
+
+}
+
+char *getId(void) {
+    if(myTokens[tokenIndex].isId == '1'){
+        //char copy[myTokens[tokenIndex].stringLength + 1];
+        char* copy = (char*) malloc(sizeof(char) * myTokens[tokenIndex].stringLength+1);
+        strncpy(copy, myTokens[tokenIndex].stringSource, myTokens[tokenIndex].stringLength);
+        copy[myTokens[tokenIndex].stringLength] = '\0';
+        return copy;
+
+    }
+    printf("ITS NOT AN ID SOMETHING IS WRONG");
+    return NULL;
+}
+
+int isInt(void) {
+    return myTokens[tokenIndex].isInt - '0';
+
+}
+
+uint64_t getInt(void) {
+    return myTokens[tokenIndex].getIntValue;
+}
+
+/* Forward declarations */
+uint64_t expression(void);
+void seq(uint64_t c);
+
+//blah blah blah
+//used for if while and else
+/*
+   void consumeStatement();
+   void consumeSection();
+//*/
+
+/* handle id, literals, and (...) */
+uint64_t e1(void) {
+    if (isLeft()) {
+        consume();
+        uint64_t v = expression();
+        if (!isRight()) {
+            error();
+        }
+        consume();
+        return v;
+    } else if (isInt()) {
+        uint64_t v = getInt();
+        consume();
+        return v;
+    } else if (isId()) {
+        char *id = getId();
+        consume();
+        return get(id);
+    } else {
+        error();
+        return 0;
+    }
+}
+
+/* handle '*' */
+uint64_t e2(void) {
+    uint64_t value = e1();
+    while (isMul()) {
+        consume();
+        value = value * e1();
+    }
+    return value;
+}
+
+/* handle '+' */
+uint64_t e3(void) {
+    uint64_t value = e2();
+    while (isPlus()) {
+        consume();
+        value = value + e2();
+    }
+    return value;
+}
+
+/* handle '==' */
+uint64_t e4(void) {
+    uint64_t value = e3();
+    while (isEqEq()) {
+        consume();
+        value = value == e3();
+    }
+    return value;
+}
+
+uint64_t expression(void) {
+    return e4();
+}
+
+int statement(uint64_t shouldPrint) {
+    if (isId()) {
+        char *id = getId();
+        consume();
+        if (!isEq())
+            error();
+        consume();
+        uint64_t v = expression();
+
+        if(shouldPrint != 0){
+            set(id, v);
+            printf("%s:%zu\n", id, v);
+            fflush(stdout);
+        }
+
+        if (isSemi()) {
+            consume();
+        }
+
+        return 1;
+    } else if (isLeftBlock()) {
+        consume();
+        seq(shouldPrint);
+        if (!isRightBlock())
+            error();
+        consume();
+        return 1;
+    } else if (isIf()) {
+        consume();
+        uint64_t c = expression();
+
+        if(c != 0){
+            statement(shouldPrint);
+        } else{
+            statement(0);
+        }
+
+        if (isElse()) {
+            consume();
+            if(c == 0){
+                statement(shouldPrint);
+            } else{
+                statement(0);
+            }
+
+        }
+        return 1;
+    } else if (isWhile()) {
+        consume();
+        int savedIndex = tokenIndex;
+        uint64_t c = expression();
+        while( c != 0 && shouldPrint != 0){
+            statement(shouldPrint);
+            tokenIndex = savedIndex;
+            c = expression();
+        } 
+        statement(0);
+
+
+        return 1;
+    } else if (isSemi()) {
+        consume();
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+void seq(uint64_t c) {
+    while (statement(c)) ;
+}
+
+/*
+   void consumeStatement(){
+//eat an ID first
+consume();
+int numIf = 1;
+
+while(numIf != 0 ){
+consume();  
+
+
+}
+
+}
+
+void consumeBlock(){
+//eat a left block
+consume();
+
+int numLeft = 1;
+while(numLeft != 0){
+if( isLeftBlock()){
+numLeft++;
+} else if( isRightBlock){
+
+
+}
+
+}
+
+}
+ */
+
+//initializes all token values
+void initToken(token *t){
+
+    *t = (token) {'0', '0', '0', '0', '0','0', '0', '0', '0', '0','0', '0', '0', '0', '0', 0, NULL, 0, 0};
+    /*
+       t = {
+       .isWhile= '0';
+       .isIf= '0';
+       .isElse= '0';
+       .isSemi= '0';
+       .isLeftBlock= '0';
+       .isRightBlock= '0';
+       .isEq= '0';
+       .isEqEq= '0';
+       .isLeft= '0';
+       .isRight= '0';
+       .isEnd= '0';
+       .isId= '0';
+       .isInt= '0';
+       .isMul= '0';
+       .isPlus= '0';
+
+       .stringIndex= 0;
+       .stringLength= 0;
+       .getIntValue= 0;
+       }; */
+
+}
+
+
+
+//adds token to myTokens
+void addToken(){
+    token *t = (token *) malloc(sizeof(token));
+
+    initToken(t);
+    //resize malloc if necessary
+    if(tokenIndex >= myTokensSize){
+        myTokensSize = myTokensSize * 2;
+        myTokens = (token*) realloc(myTokens, sizeof(token) * myTokensSize);
+    }
+
+    myTokens[tokenIndex] = *t;
+
+}
+
+
+
+void tokenize(){    
+    int i = 0;
+    while( programChars[i] != '\0'){
+        char symbol = programChars[i];
+        if(symbol != ' ' && symbol != '\t'){
+            addToken();
+        } else{
+            i++;
+            continue;
+        }
+
+
+        switch(symbol){
+            case ';':
+                //printf("hit semi");
+                myTokens[tokenIndex].isSemi = '1';
+                break;
+            case '{':
+                myTokens[tokenIndex].isLeftBlock = '1';
+                break;
+            case '}':
+                myTokens[tokenIndex].isRightBlock = '1';
+                break;
+            case '(':
+                myTokens[tokenIndex].isLeft = '1';
+                break;
+            case ')':
+                myTokens[tokenIndex].isRight = '1';
+                break;
+            case '*':
+                myTokens[tokenIndex].isMul = '1';
+                break;
+            case '+':
+                myTokens[tokenIndex].isPlus = '1';
+                break;
+            case '=': 
+                i++;
+                if(programChars[i] == '='){
+                    myTokens[tokenIndex].isEqEq = '1';
+                } else{
+                    myTokens[tokenIndex].isEq = '1';
+                    i--;
+                }
+                break;
+            default:
+                /* 
+                   printf("\n %c", symbol);   
+                   printf(" %d ", symbol - 'a');
+                   printf(" %d ", symbol - '0');
+                //*/
+
+                //if it starts in a number, must be an Int
+                if( (0 <= symbol - '0') && (symbol - '0' <= 9)){
+                    //printf("is a number");
+                    uint64_t value = 0; 
+                    while ( ((0 <= symbol - '0') && (symbol - '0' <= 9))|| symbol == '_'){
+                        if(symbol == '_'){
+                            i++;
+                            symbol = programChars[i];
+                            continue;
+                        } else{
+                            value = value * 10 + (symbol - '0');
+                        }
+                        i++;
+                        symbol = programChars[i];
+                    }
+                    i--;
+                    myTokens[tokenIndex].getIntValue = value;
+                    myTokens[tokenIndex].isInt = '1';
+
+                }
+                //if not number, then must be an identifier
+                else if( (0 <= symbol - 'a') && (symbol - 'a' <= 26)){
+                    //printf("is an Id");
+                    int index = i;
+                    int len = 1;
+                    i++;
+                    symbol = programChars[i];
+
+                    while ( ((0 <= symbol - '0') && (symbol - '0' <= 9)) || ((0 <= symbol - 'a') && (symbol - 'a' <= 25))){
+                        //index++;
+                        len++;
+                        i++;
+                        symbol = programChars[i];
+                    }
+                    i--;
+
+                    //check if identifier is a keyword
+                    //while
+                    if (programChars[index] == 'w' && len == 5 && programChars[index+1] == 'h' && programChars[index+2] == 'i' &&
+                            programChars[index+3] == 'l' &&
+                            programChars[index+4] == 'e'){
+                        myTokens[tokenIndex].isWhile = '1';
+                    }
+                    //if
+                    else if (programChars[index] == 'i' && len == 2 && programChars[index+1] == 'f'){
+                        myTokens[tokenIndex].isIf = '1';
+                    }
+                    else if (programChars[index] == 'e' && len == 4 && programChars[index+1] == 'l' && programChars[index+2] == 's' && programChars[index+3] == 'e'){
+                        myTokens[tokenIndex].isElse = '1';
+                    }
+                    else{
+                        myTokens[tokenIndex].isId = '1';
+                        myTokens[tokenIndex].stringLength = len;
+                        myTokens[tokenIndex].stringIndex = index;
+                        myTokens[tokenIndex].stringSource = &programChars[index];
+                    }
+                }
+        }
+        i++;
+        //printf(" %d,", tokenIndex);
+        tokenIndex++;
+    }
+
+    //programChars[i] was equal to \0, so must be at end
+    addToken();
+    myTokens[tokenIndex].isEnd = '1';
+
+    //set tokenIndex back to 0
+    tokenIndex = 0;
+}
+void program(void) {
+    tokenize();
+
+    //test tokenizer
+    /*
+       for(int i = 0; i < tokenIndex+4; i++){
+       printf("\n");
+       printf("isId: %c ", myTokens[i].isId);
+       printf("isEq: %c ", myTokens[i].isEq);
+       printf("isEqEq: %c ", myTokens[i].isEqEq);
+       printf("isInt: %c ", myTokens[i].isInt);
+       printf("getInt: %d ", myTokens[i].getIntValue);
+       printf("isSemi: %c", myTokens[i].isSemi);
+       }
+    //*/
+
+
+    seq(1);
+    if (!isEnd())
+        error();
+}
+
+void interpret(char *prog) {
+    /* initialize global variables*/
+
+    programChars = strdup(prog);
+    tokenIndex = 0;
+    myTokensSize = 10;
+    myTokens = (token*) malloc(sizeof(token) * 10);
+
+    hashTable = (node *) calloc(100, sizeof(node));
+    /*
+       node head;
+       head.next = '\0';
+
+       for(int j = 0; j < 100; j++){
+       hashTable[j] = head;
+
+       }
+     */
+
+    int x = setjmp(escape);
+    if (x == 0) {
+        program();
+    }
+    //free(myTokens);
+    //free(programChars);
+}
+
+int main(int argc, char *argv[]) {
+    FILE *input = fopen("p2_input.txt", "r");
+    fseek(input, 0, SEEK_END);
+    long size = ftell(input);
+    fseek(input, 0, SEEK_SET);
+    char *file_as_string = malloc(size + 1);
+    fread(file_as_string, size, 1, input);
+    file_as_string[size] = 0;
+    fclose(input);
+    interpret(file_as_string);
+
+    return 0;
+
+}

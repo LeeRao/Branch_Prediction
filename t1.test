@@ -1,0 +1,22 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(){
+	// testing global branch prediction
+	
+	int y = 80;
+	int a = 0;
+	while(y > 0){
+		if(a == 4){
+			a = 0;
+		} 
+		if(a == 0){
+			a = 0;
+			printf("hello");
+		}
+		a++;
+		y--;
+	}//*/
+
+	return 0;
+}

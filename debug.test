@@ -1,0 +1,15 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(){
+	int y = 10;
+	while(y > 0){
+		int x = 3;
+		while(x > 0){
+			printf("hello");
+			x--;
+		}
+		y--;
+	}
+	return 0;
+}

@@ -1,0 +1,78 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(){
+	
+	int x = 100;
+	while(x > 0){
+		if(x % 3 == 1 | x % 3 == 2){
+			printf("Hello even\n");
+		}
+		x--;
+	}
+
+	// testing global branch prediction
+	
+	int y = 200;
+	int a = 0;
+	while(y > 0){
+		if(a == 4){
+			a = 0;
+		} 
+		if(a == 0){
+			a = 0;
+			printf("hello");
+		}
+		a++;
+		y--;
+	}//*/
+	
+	// testing stuff related to loop prediction
+	a = 4;
+	while(a > 0){
+		printf("hello");
+		a--;
+	}
+	a = 4;
+	while(a > 0){
+		printf("hello");
+		a--;
+	}
+	a = 4;
+	while(a > 0){
+		printf("hello");
+		a--;
+	}
+	a = 4;
+	while(a > 0){
+		printf("hello");
+		a--;
+	}
+	a = 4;
+	while(a > 0){
+		printf("hello");
+		a--;
+	}
+	a = 4;
+	while(a > 0){
+		printf("hello");
+		a--;
+	}
+	a = 4;
+	while(a > 0){
+		printf("hello");
+		a--;
+	}
+	a = 4;
+	while(a > 0){
+		printf("hello");
+		a--;
+	}
+	a = 4;
+	while(a > 0){
+		printf("hello");
+		a--;
+	}
+
+	return 0;
+}

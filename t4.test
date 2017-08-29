@@ -1,0 +1,27 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(){
+	
+	// test more global relationships, three branches strongly tied to one
+	int x = 1000;
+	while(x > 0){
+		int i = rand() % 6;
+		if(i == 1){
+			i = 10;
+		}
+		if(i == 10){
+			printf(" ");
+		}
+		if (i == 10){
+			printf(" ");
+		}
+		if(i == 10){
+			printf(" ");
+
+		}
+		x--;
+	}
+
+	return 0;
+}

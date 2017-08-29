@@ -1,0 +1,30 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(){
+	
+	// testing loop prediction
+
+	int a = 100;
+	while(a > 0){
+		int b = 4;
+		int c = 14;
+		int d = 200;
+
+		while(b > 0){
+			b--;
+		}
+
+		while(c > 0){
+			c--;
+		}
+
+		while(d > 0){
+			d--;
+		}
+		a--;
+		printf("hello\n");
+	}
+
+	return 0;
+}
