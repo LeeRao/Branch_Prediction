@@ -4,6 +4,8 @@
 #include <math.h>
 #include "sim.h" 
 
+// Loop Termination Prediction paper: https://pdfs.semanticscholar.org/bd56/db0b8529c3d2ee3c0487e15d8132dcb68f8e.pdf 
+
 typedef struct d{
 	int tag; // 14 bits
 	int nbiter; // number of iterations until termination counter, 14 bits
@@ -180,14 +182,14 @@ void loop_predictor(char *input_file){
 				int pred = loop_prediction(addr, taken, 0);
 				if(pred == taken){
 					correct++;
-					printf("Guessed right\n");
+					// printf("Guessed right\n");
 				} else if (pred == -1){
-					printf("Didn't guess\n");
+					// printf("Didn't guess\n");
 				} else{
-					printf("Guessed right\n");
+					// printf("Guessed right\n");
 				}
 			} else{
-				printf("Not a loop\n");
+				// printf("Not a loop\n");
 			}
 			total++;
 			free(address);

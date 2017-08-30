@@ -3,6 +3,9 @@
 #include <string.h>
 #include "sim.h"
 
+/* Static Branch Predictor: This predictor always predicts not taken on a branch.
+ */
+
 void static_predictor(char *input_file){
 	FILE *file = fopen(input_file, "r");
 	char line[LINE_SIZE];

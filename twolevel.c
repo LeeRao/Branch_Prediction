@@ -4,6 +4,12 @@
 #include <math.h>
 #include "sim.h"
 
+/* Based on Yeh and Patt's Two Level Adaptive Predictor:
+ * http://www.inf.pucrs.br/~calazans/graduate/SDAC/saltos.pdf
+ *
+ * This lightweight predictor relies on a table of saturation counters to predict based on a local/global history pattern.
+ */
+
 typedef struct a{
 	char valid;
 	unsigned long addr;
@@ -16,39 +22,8 @@ typedef struct b{
 	// can't put sat_counter in here bc array cannot have variable length.
 } local_entry;
 
-/* handles meta-prediction as well */
-int prediction_result(int local_res, int global_res, int local_size, int local_hist_length,
-	int global_size, int global_hist_length, int meta_sat_counter[], int index, int option){
-	if(option == 0){
-		return local_res;
-	} else if(option == 1){
-		return global_res;
-	} else{
-		// if still warming up, then predicted wrong.
-		if(local_size < local_hist_length
-			&& global_size < global_hist_length){
-			return 0;
-		} else if(local_size < local_hist_length){
-			// choose global if local still warming up
-			return global_res;
-		} else if(global_size < global_hist_length){
-			// choose local if global still warming up
-			return local_res;
-		} else{
-			// if both warm, choose based on saturation counter.
-			int result = meta_sat_counter[index] < 2 ? local_res : global_res;
-			// update meta-predictor, don't change counter if both right or both wrong
-			if(global_res - local_res > 0){
-				meta_sat_counter[index] = MIN(meta_sat_counter[index] + 1, 3);
-			} else if(global_res - local_res < 0){
-				meta_sat_counter[index] = MAX(meta_sat_counter[index] - 1, 0);
-			}
-			return result;
-		}
-	}
-}
-
-/* return 1 if correct, 0 if wrong*/
+/* Updates local history table
+ * return 1 if correct, 0 if wrong*/
 int add_local_hist(local_entry* local_history, unsigned long local_hist_length, int sat_counter[], 
 	char *addr, int taken){
 	int index = atoi(addr) & (ADDR_TABLE_SIZE - 1);
@@ -70,14 +45,14 @@ int add_local_hist(local_entry* local_history, unsigned long local_hist_length, 
 	} else{
 		sat_counter[sat_index] = MAX(sat_counter[sat_index]- 1, 0);
 	}
-	
 
 	// update pattern
 	local_history[index].pattern = (local_history[index].pattern << 1) + taken;
 	return taken == prediction;
 }
 
-/* return 1 if correct, 0 if wrong*/
+/* Updates global history table
+ * return 1 if correct, 0 if wrong*/
 int add_global_hist(int global_history, int global_size, unsigned long global_hist_length, int global_sat_counter[], 
 	char *addr, int taken){
 	int index = (atoi(addr) ^ global_history) & (ADDR_TABLE_SIZE - 1);
@@ -97,13 +72,7 @@ int add_global_hist(int global_history, int global_size, unsigned long global_hi
 	}
 
 	// update global history
-	/*
-	for(int i = global_hist_length - 1; i > 0; i--){
-		global_history[i] = global_history[i - 1]; 
-	}
-	global_history[0] = taken;*/
 	global_history = (global_history << 1) + taken;
-
 
 	return taken == prediction;
 }
@@ -138,14 +107,11 @@ void two_level_predictor(char *input_file, unsigned long local_hist_length, unsi
 		local_history[i].hist_length = 0;
 		local_history[i].pattern = 0;
 		global_sat_counter[i] = 1;
-		meta_sat_counter[i] = 1;
+		meta_sat_counter[i] = 4; // using 3 bits for this saturation counter, favors global initially
 		for(int j = 0; j < sat_size; j++){
 			sat_counter[i][j] = 1; // init all sat counters to 1
 		}
 	}
-
-	// unsigned long global_pattern = 0;
-	// unsigned int global_sat_counter[pow(2, global_hist_length)];
 
 	FILE *file = fopen(input_file, "r");
 	char line[LINE_SIZE];
@@ -177,9 +143,4 @@ void two_level_predictor(char *input_file, unsigned long local_hist_length, unsi
 	fclose(file);
 	printf("\tPercentage correct: %f%%\n\tCorrect: %f\n\tTotal Branches: %f\n", 
 		correct/total * 100, correct, total);
-	/*
-	printf("pattern %lu\n", local_history[196].pattern);
-		for(int i = 0; i < 3; i++){
-			printf("%d: %d\n", i, sat_counter[196][i]);
-		}*/
 }

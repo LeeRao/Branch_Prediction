@@ -2,15 +2,14 @@
 #include <stdlib.h>
 
 int main(){
-	int x = 10;
+	int x = 40;
 	while(x > 0){
+        int y = 10;
+        while(y > 0){
+            y--;
+        }
 		printf("Hello world\n");
 		x--;
-		if(x > 5){
-			printf("Hello I'm over 5\n");
-		} else{
-			printf("Hello I'm less than 5");
-		}
 	}
 
 	return 0;

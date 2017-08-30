@@ -11,6 +11,14 @@
 #define ALPHA 2
 #define USEFUL_RESET 256*1024
 
+
+/* Andre Seznec's L-Tage predictor, taken from this paper:
+    https://www.jilp.org/vol9/v9paper6.pdf
+    The L-Tage Predictor utilizes geometric history lengths and a complicated update mechanism to form an adder tree-based prediction.
+    I try to follow design outlined in paper as faithfully as possible. I make sure to comment places where I believe the paper is ambiguous.
+*/
+
+
 typedef struct c{
 	struct component_entry{
 		int pred; // 3 bit saturation counter
@@ -45,10 +53,6 @@ int compute_index(int hist[], int addr, int hist_cap){
 	for(int i = len - 1; i >=0; i--){
 		convert = (convert << 1) + temp[i];
 	}
-	// printf("");
-	// printf("Index: %d\n", (addr ^ convert) & 0x3ff);
-	// TODO: don't hard code the 0x3ff
-	// printf("Computed: %d\t%d\t%d\n", (addr ^ convert) & 0x3ff, addr, convert);
 	return (addr ^ convert) & 0x3ff; // grab last 10 bits
 }
 
@@ -107,10 +111,6 @@ int update_tage(int hist[], component T[], int num_components, int base_predicto
 			int tag = compute_tag(hist, addr, hist_cap);
 			int index = compute_index(hist, addr, hist_cap);
 
-			// int tag = compute_tag(hist, addr, hist_cap);
-			// printf("Index: %d\n", index);
-			// printf("comp_index_res: %d\n", comp_index_res);
-			// printf(""); 
 			if(T[i].entry[index].tag == tag){
 				if(i > provider){
 					provider = i;
@@ -126,10 +126,6 @@ int update_tage(int hist[], component T[], int num_components, int base_predicto
 			}
 		}
 	}
-	// printf("provider: %d\n", provider);
-	// printf("alt: %d\n", alt);
-	// printf("Alt2: %d\n", alt);
-
 	// now decide how to allocate entries based on branch result
 
 	// UPDATE PREDICTION COUNTERS
@@ -233,26 +229,14 @@ int update_tage(int hist[], component T[], int num_components, int base_predicto
 
 	// LOOP PREDICTION
 	if(loop && loop_on){
-		/*int loop_guess = *///loop_prediction(addr, taken, final_pred);
-		// final_pred = loop_guess >= 0 ? loop_guess : final_pred;
-		/*printf("%d\n", loop_guess);
-		if (loop_guess >= 0){
-			printf("Used loop pred\n");
-		}//*/
+		int loop_guess = loop_prediction(addr, taken, final_pred);
+		final_pred = loop_guess >= 0 ? loop_guess : final_pred;
 	}
 
 	return final_pred == taken;
 }
 
-/* l-tage predictor design idea taken from this paper:
-https://www.jilp.org/vol9/v9paper6.pdf
-I try to follow design outlined in paper as faithfully as possible
-NOTE: num_components is one less than true number of components (which includes base predictor)
-*/
-
-/*int base_predictor[BIMODAL_SIZE]; // table of 2 bit saturation counters
-component predictors[4];//*/ // num_components doesn't include base predictor
-// int global_pattern[80];
+/* NOTE: num_components is one less than true number of components (which includes base predictor) */
 void tage_predictor(char *input_file, int num_components, int L0_Length, int loop_on){
 	int base_predictor[BIMODAL_SIZE]; // table of 2 bit saturation counters 
 	component predictors[num_components]; // num_components doesn't include base predictor //*/

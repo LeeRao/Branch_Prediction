@@ -4,6 +4,12 @@
 #include <math.h>
 #include "sim.h"
 
+/* Lin and Jiminez's Perceptron Branch Predictor:
+ * https://www.cs.utexas.edu/~lin/papers/hpca01.pdf
+ * Prediction works through the use of perceptrons to form a hyperplane on an n-dimensional branch history.
+ * Notably struggles with linearly inseparable functions, but that's life. 
+ */
+
 int dot_product(int size, int a[], int b[]){
 	int sum = 0;
 	for(int i = 0; i < size; i++){
@@ -12,9 +18,7 @@ int dot_product(int size, int a[], int b[]){
 	return sum;
 }
 
-/* Idea for algorithm is from this paper:
-https://www.cs.utexas.edu/~lin/papers/hpca01.pdf
-*/
+/* Train perceptrons based on the result of the branch */
 void train(int hist[], int hist_length, int perceptron[], int taken){
 	double threshold = 1.93 * hist_length + 14;
 	int y = dot_product(hist_length, hist, perceptron);
@@ -76,7 +80,7 @@ void perceptron_predictor(char *input_file, int local_hist_length, int global_hi
 	for(int i = 0; i < ADDR_TABLE_SIZE; i++){
 		local_size[i] = 0;
 		local_hist[i][0] = 1; // bias bit
-		meta_sat_counter[i] = 1; // favors local initially
+		meta_sat_counter[i] = 4; // favors global initially
 		/* going to set all weights as 0 initially*/
 		for(int j = 0; j < global_hist_length + 1; j++){
 			global_perceptrons[i][j] = 0; 
@@ -107,7 +111,7 @@ void perceptron_predictor(char *input_file, int local_hist_length, int global_hi
 			int local_res = update_perceptron(local_hist[index], local_hist_length, local_perceptrons[index],
 				local_size[index], addr, taken);
 
-			// NOTE: prediction_result defined in twolevel.c
+			// NOTE: prediction_result defined in prediction.c
 			correct += prediction_result(local_res, global_res, local_size[index], local_hist_length,
 			global_size, global_hist_length, meta_sat_counter, index, option);
 			total++;
